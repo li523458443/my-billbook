@@ -17,8 +17,6 @@ export async function onRequest(context) {
 
     // 原有的 GET 逻辑保持不变（略）
     // ...
-    const { request, env } = context;
-    const url = new URL(request.url);
     const counterparty = url.searchParams.get('counterparty');
     const year = url.searchParams.get('year');
     const month = url.searchParams.get('month');
