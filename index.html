@@ -12,7 +12,7 @@
         body { background: #f3f6fc; margin: 0; padding: 20px; color: #1e2a3e; }
         .container { max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 24px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); padding: 20px 24px; margin-bottom: 24px; }
-        .card-header { font-size: 1.5rem; font-weight: 600; margin-bottom: 16px; border-left: 5px solid #3b82f6; padding-left: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .card-header { font-size: 1.5rem; font-weight: 600; margin-bottom: 16px; border-left: 5px solid #3b82f6; padding-left: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .btn { border: none; padding: 8px 18px; border-radius: 40px; font-weight: 500; cursor: pointer; background: #eef2ff; color: #1e40af; transition: 0.2s; }
         .btn-primary { background: #3b82f6; color: white; box-shadow: 0 2px 6px rgba(59,130,246,0.3); }
         .btn-primary:hover { background: #2563eb; }
@@ -57,6 +57,32 @@
             input, select { width: 100%; }
         }
         footer { text-align: center; font-size: 0.75rem; color: #64748b; margin-top: 30px; }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal.hidden { display: none; }
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 90%;
+            overflow-y: auto;
+        }
+        .modal-content h3 { margin-top: 0; }
+        .modal-content div { margin-bottom: 12px; }
+        .modal-content label { display: block; margin-bottom: 4px; font-weight: 500; }
+        .modal-content input, .modal-content select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -76,6 +102,7 @@
             <div class="card-header">
                 📊 个人记账仪表板
                 <div style="display: flex; gap: 8px;">
+                    <button id="quickAddBtn" class="btn btn-primary">➕ 快速记账</button>
                     <button id="exportBtn" class="btn btn-sm">📥 导出</button>
                     <button id="logoutBtn" class="btn btn-sm">🚪 退出</button>
                 </div>
@@ -167,6 +194,58 @@
         <footer>🔒 数据加密存储于Cloudflare D1 · 两阶段导入支持重复覆盖 · 自动分类 · 分页加载</footer>
     </div>
 </div>
+
+<!-- 快捷记账弹窗 -->
+<div id="quickAddModal" class="modal hidden">
+    <div class="modal-content">
+        <h3>快速记账</h3>
+        <form id="quickAddForm">
+            <div>
+                <label>类型</label>
+                <select name="type" required>
+                    <option value="expense">支出</option>
+                    <option value="income">收入</option>
+                </select>
+            </div>
+            <div>
+                <label>金额</label>
+                <input type="number" name="amount" step="0.01" required>
+            </div>
+            <div>
+                <label>对方名称</label>
+                <input type="text" name="counterparty" required>
+            </div>
+            <div>
+                <label>日期</label>
+                <input type="date" name="date" required>
+            </div>
+            <div>
+                <label>分类</label>
+                <select name="category" required>
+                    <option value="餐饮">餐饮</option>
+                    <option value="交通">交通</option>
+                    <option value="购物">购物</option>
+                    <option value="娱乐">娱乐</option>
+                    <option value="人情往来">人情往来</option>
+                    <option value="医疗">医疗</option>
+                    <option value="住房">住房</option>
+                    <option value="利息">利息</option>
+                    <option value="退款">退款</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+            <div>
+                <label>备注</label>
+                <input type="text" name="note">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" id="closeModalBtn" class="btn">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     // 全局变量
     let currentAuth = "";
@@ -371,10 +450,13 @@
                 select.style.padding="4px";
                 select.style.fontSize="0.85rem";
                 select.onchange = async (e) => { 
+                    const newCategory = e.target.value;
                     await apiFetch(`/api/transactions/${t.id}`, { 
                         method: 'PUT', 
-                        body: JSON.stringify({ category: e.target.value }) 
+                        body: JSON.stringify({ category: newCategory }) 
                     }); 
+                    // 记录学习规则
+                    await recordLearning(t.counterparty, newCategory);
                     showToast("分类已更新", "success");
                     loadStats(currentFilters.year, currentFilters.month, currentFilters.category); 
                 };
@@ -453,9 +535,7 @@
             }
         };
 
-        // 动态加载分类下拉框
         const categorySelect = document.getElementById("categoryFilter");
-        // 可以先从后端获取，这里简化用硬编码
         const categories = ['餐饮','交通','购物','娱乐','人情往来','医疗','住房','利息','退款','其他'];
         categorySelect.innerHTML = '<option value="">全部分类</option>';
         categories.forEach(cat => {
@@ -510,6 +590,59 @@
             showToast("导出成功", "success");
         } catch (error) {
             showToast(error.message, "error");
+        }
+    };
+
+    // ---------- 智能学习相关 ----------
+    async function recordLearning(counterparty, category) {
+        if (!counterparty || !category) return;
+        try {
+            await apiFetch('/api/learning/record', {
+                method: 'POST',
+                body: JSON.stringify({ counterparty, category })
+            });
+        } catch (err) {
+            console.warn('记录学习规则失败', err);
+        }
+    }
+
+    // ---------- 快捷记账 ----------
+    const quickAddBtn = document.getElementById('quickAddBtn');
+    const quickAddModal = document.getElementById('quickAddModal');
+    const quickAddForm = document.getElementById('quickAddForm');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    quickAddBtn.onclick = () => {
+        const today = new Date().toISOString().slice(0,10);
+        document.querySelector('input[name="date"]').value = today;
+        quickAddModal.classList.remove('hidden');
+    };
+
+    closeModalBtn.onclick = () => {
+        quickAddModal.classList.add('hidden');
+    };
+
+    quickAddForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(quickAddForm);
+        const data = {
+            date: formData.get('date'),
+            type: formData.get('type'),
+            amount: parseFloat(formData.get('amount')),
+            counterparty: formData.get('counterparty'),
+            note: formData.get('note'),
+            category: formData.get('category'),
+            source: 'manual',
+            transactionId: ''
+        };
+        try {
+            await apiFetch('/api/transactions', { method: 'POST', body: JSON.stringify(data) });
+            showToast('记账成功', 'success');
+            quickAddModal.classList.add('hidden');
+            quickAddForm.reset();
+            loadAllData();
+        } catch (err) {
+            showToast('记账失败: ' + err.message, 'error');
         }
     };
 
@@ -716,7 +849,6 @@
     async function renderPreview(checkResult) {
         const { newItems, duplicates } = checkResult;
 
-        // 渲染新记录表格
         const newTbody = document.querySelector("#newItemsTable tbody");
         newTbody.innerHTML = "";
         for (let t of newItems) {
@@ -735,12 +867,14 @@
                 if (t.category === c) opt.selected = true;
                 select.appendChild(opt);
             });
-            select.onchange = (e) => { t.category = e.target.value; };
+            select.onchange = (e) => {
+                t.category = e.target.value;
+                recordLearning(t.counterparty, e.target.value);
+            };
             catCell.appendChild(select);
             row.insertCell(5).innerText = t.source === 'wechat' ? '微信' : (t.source === 'alipay' ? '支付宝' : '云闪付');
         }
 
-        // 渲染重复记录表格
         const dupTbody = document.querySelector("#duplicatesTable tbody");
         dupTbody.innerHTML = "";
         for (let d of duplicates) {
@@ -766,13 +900,15 @@
                 if (d.category === c) opt.selected = true;
                 selectDup.appendChild(opt);
             });
-            selectDup.onchange = (e) => { d.category = e.target.value; };
+            selectDup.onchange = (e) => {
+                d.category = e.target.value;
+                recordLearning(d.counterparty, e.target.value);
+            };
             catCellDup.appendChild(selectDup);
             row.insertCell(6).innerText = d.source === 'wechat' ? '微信' : (d.source === 'alipay' ? '支付宝' : '云闪付');
             row.insertCell(7).innerHTML = `ID:${d.existingId} 日期:${d.existingDate} 金额:${d.existingAmount} 对方:${d.existingCounterparty} 分类:${d.existingCategory} 来源:${d.existingSource}<br><small>${d.duplicateReason}</small>`;
         }
 
-        // 全选/取消全选
         const selectAllCheckbox = document.getElementById("selectAllDuplicates");
         selectAllCheckbox.onclick = () => {
             const checkboxes = document.querySelectorAll(".dup-checkbox");
@@ -789,11 +925,7 @@
         }
 
         const { newItems, duplicates } = pendingCheckResult;
-
-        // 收集新记录（已包含可能修改的分类）
         const finalNewItems = newItems.map(item => ({ ...item }));
-
-        // 收集选中的重复记录
         const checkboxes = document.querySelectorAll(".dup-checkbox");
         const selectedOverwrites = [];
         for (let cb of checkboxes) {
