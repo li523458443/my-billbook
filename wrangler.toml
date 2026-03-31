@@ -1,0 +1,7 @@
+name = "my-billbook"
+#pages_build_output_dir = "./client/dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bill_db"
+database_id = "7323bde3-410e-4627-af68-2d6b7e2c4430"
