@@ -7,18 +7,17 @@ import ImportPreview from './components/ImportPreview';
 import QuickAddModal from './components/QuickAddModal';
 import Stats from './components/Stats';
 import { apiFetch } from './services/api';
+import MonthlyTrend from './components/MonthlyTrend';
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError, login, logout } = useAuth();
   const {
-	transactions,
-	pagination,
-	loading: txLoading,
-	fetchTransactions,
-	deleteTransaction,
-	updateCategory,
-	setPage,
-	setLimit,
+    transactions,
+    pagination,
+    loading: txLoading,
+    fetchTransactions,
+    deleteTransaction,
+    updateCategory,
   } = useTransactions();
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -29,7 +28,8 @@ function App() {
     counterparty: '',
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [categories, setCategories] = useState([]); // 动态分类列表
+  const [categories, setCategories] = useState([]);
+  const currentYear = new Date().getFullYear();
 
   // 加载分类列表
   useEffect(() => {
@@ -83,7 +83,7 @@ function App() {
             <select value={filters.year} onChange={(e) => handleFilterChange('year', e.target.value)}>
               <option value="">全部</option>
               {[...Array(6)].map((_, i) => {
-                const year = new Date().getFullYear() - i;
+                const year = currentYear - i;
                 return <option key={year} value={year}>{year}</option>;
               })}
             </select>
@@ -123,8 +123,10 @@ function App() {
           <button onClick={resetFilters} className="btn">重置</button>
         </div>
 
+        {/* 月度趋势 */}
+        <MonthlyTrend year={filters.year || currentYear} />
+
         {/* 统计图表 */}
-		MonthlyTrend year={filters.year || new Date().getFullYear()} />
         <Stats filters={filters} />
 
         {/* 导入预览 */}
@@ -132,37 +134,35 @@ function App() {
 
         {/* 交易列表 */}
         <TransactionList
-		  transactions={transactions}
-		  loading={txLoading}
-		  pagination={pagination}
-		  onPageChange={setPage}
-		  onLimitChange={setLimit}
-		  onDelete={deleteTransaction}
-		  onUpdateCategory={updateCategory}
-		  categories={categories}
-		/>
+          transactions={transactions}
+          loading={txLoading}
+          pagination={pagination}
+          onPageChange={(page) => setCurrentPage(page)}
+          onDelete={deleteTransaction}
+          onUpdateCategory={updateCategory}
+          categories={categories}
+        />
 
-        {/* 分页（可选） */}
+        {/* 分页控件 */}
         {pagination && pagination.totalPages > 1 && (
-		  <div className="pagination">
-			<button onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page <= 1}>
-			  上一页
-			</button>
-			{Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
-			  <button
-				key={page}
-				onClick={() => onPageChange(page)}
-				className={page === pagination.page ? 'active' : ''}
-				disabled={page === pagination.page}
-			  >
-				{page}
-			  </button>
-			))}
-			<button onClick={() => onPageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}>
-			  下一页
-			</button>
-		  </div>
-		)}
+          <div className="pagination" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            <button
+              className="page-btn"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
+              上一页
+            </button>
+            <span>第 {currentPage} / {pagination.totalPages} 页</span>
+            <button
+              className="page-btn"
+              disabled={currentPage >= pagination.totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
+              下一页
+            </button>
+          </div>
+        )}
       </main>
 
       {/* 快速记账弹窗 */}
