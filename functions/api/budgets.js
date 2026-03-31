@@ -1,7 +1,7 @@
 export async function onRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
-    const month = url.searchParams.get('month'); // 格式 YYYY-MM
+    const month = url.searchParams.get('month');
 
     if (request.method === 'GET') {
         let query = 'SELECT id, category, month, amount FROM budgets';
@@ -20,7 +20,6 @@ export async function onRequest(context) {
         if (!category || !month || amount === undefined) {
             return new Response(JSON.stringify({ error: '缺少必要参数' }), { status: 400 });
         }
-        // 插入或替换
         await env.DB.prepare(
             `INSERT INTO budgets (category, month, amount, updated_at) 
              VALUES (?, ?, ?, CURRENT_TIMESTAMP) 

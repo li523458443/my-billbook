@@ -7,9 +7,6 @@ export async function onRequest(context) {
     if (!counterparty || !category) {
         return new Response(JSON.stringify({ error: '缺少参数' }), { status: 400 });
     }
-    // 存储学习规则，可以设置权重（计数）以便后续统计
-    // 表 learning_rules 设计：id, counterparty, category, count, created_at, updated_at
-    // 使用 INSERT OR REPLACE 更新计数
     await env.DB.prepare(
         `INSERT INTO learning_rules (counterparty, category, count, updated_at) 
          VALUES (?, ?, 1, CURRENT_TIMESTAMP) 
