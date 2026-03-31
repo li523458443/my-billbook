@@ -124,6 +124,7 @@ function App() {
         </div>
 
         {/* 统计图表 */}
+		MonthlyTrend year={filters.year || new Date().getFullYear()} />
         <Stats filters={filters} />
 
         {/* 导入预览 */}
