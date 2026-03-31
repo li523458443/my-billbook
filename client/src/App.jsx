@@ -8,6 +8,9 @@ import QuickAddModal from './components/QuickAddModal';
 import Stats from './components/Stats';
 import { apiFetch } from './services/api';
 import MonthlyTrend from './components/MonthlyTrend';
+import BudgetModal from './components/BudgetModal';
+import BudgetOverview from './components/BudgetOverview';
+
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError, login, logout } = useAuth();
@@ -30,6 +33,21 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [categories, setCategories] = useState([]);
   const currentYear = new Date().getFullYear();
+  // 在 App 组件内添加状态
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
+
+// 生成当前选择的月份字符串（YYYY-MM）
+  useEffect(() => {
+      if (filters.year && filters.month) {
+          setSelectedMonth(`${filters.year}-${filters.month}`);
+      } else if (filters.year) {
+          setSelectedMonth(`${filters.year}-01`); // 默认一月
+      } else {
+          const now = new Date();
+          setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+      }
+  }, [filters]);
 
   // 加载分类列表
   useEffect(() => {
@@ -71,6 +89,7 @@ function App() {
           <button onClick={() => setShowQuickAdd(true)} className="btn btn-primary" style={{ marginRight: '10px' }}>
             ➕ 快速记账
           </button>
+		  <button onClick={() => setShowBudgetModal(true)} className="btn">💰 预算</button>
           <button onClick={logout} className="btn">退出</button>
         </div>
       </header>
@@ -131,6 +150,8 @@ function App() {
 
         {/* 导入预览 */}
         <ImportPreview onImportSuccess={() => fetchTransactions(filters, currentPage)} />
+		// 在 Stats 组件下方添加预算概览
+		<BudgetOverview month={selectedMonth} />
 
         {/* 交易列表 */}
         <TransactionList
@@ -164,6 +185,14 @@ function App() {
           </div>
         )}
       </main>
+	  // 在页面底部添加弹窗
+	  <BudgetModal
+		  isOpen={showBudgetModal}
+		  onClose={() => setShowBudgetModal(false)}
+		  onSave={() => {/* 可刷新预算概览 */}}
+		  month={selectedMonth}
+		  categories={categories}
+	  />
 
       {/* 快速记账弹窗 */}
       <QuickAddModal
