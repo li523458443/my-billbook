@@ -42,7 +42,7 @@ export default function BudgetModal({ isOpen, onClose, onSave, month, categories
                 }
             }
             alert('预算保存成功');
-            onSave();
+            if (onSave) onSave();
             onClose();
         } catch (err) {
             alert('保存失败: ' + err.message);
