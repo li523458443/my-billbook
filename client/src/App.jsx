@@ -186,15 +186,15 @@ function App() {
       </main>
 
       {/* 预算设置弹窗 */}
-      <BudgetModal
-        isOpen={showBudgetModal}
-        onClose={() => setShowBudgetModal(false)}
-        onSave={() => {
-          // 可刷新预算概览，实际在 BudgetOverview 组件内部已监听 month 变化自动刷新
-        }}
-        month={selectedMonth}
-        categories={categories}
-      />
+	  <BudgetModal
+		  isOpen={showBudgetModal}
+		  onClose={() => setShowBudgetModal(false)}
+		  onSave={(month) => {
+			// 可选：刷新预算概览，但 BudgetOverview 已监听 month 变化自动刷新
+		  }}
+		  initialMonth={selectedMonth}
+		  categories={categories}
+	  />
 
       {/* 快速记账弹窗 */}
       <QuickAddModal
