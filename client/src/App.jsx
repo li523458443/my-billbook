@@ -7,12 +7,10 @@ import ImportPreview from './components/ImportPreview';
 import QuickAddModal from './components/QuickAddModal';
 import Stats from './components/Stats';
 import YearlySummary from './components/YearlySummary';
-import { apiFetch } from './services/api';
 import MonthlyTrend from './components/MonthlyTrend';
 import BudgetModal from './components/BudgetModal';
 import BudgetOverview from './components/BudgetOverview';
-													   
-
+import { apiFetch } from './services/api';
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError, login, logout } = useAuth();
@@ -40,13 +38,8 @@ function App() {
   const currentYear = new Date().getFullYear();
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
-											 
-												  
-						
-														   
-	
 
-  // 生成当前选择的月份字符串（YYYY-MM）
+  // 生成当前选择的月份字符串
   useEffect(() => {
     if (filters.year && filters.month) {
       setSelectedMonth(`${filters.year}-${filters.month}`);
@@ -94,13 +87,10 @@ function App() {
     setCurrentPage(1);
   };
 
-  // ========== 饼图点击回调 ==========
   const handleCategoryClick = (category) => {
     setFilters(prev => ({ ...prev, category }));
     setCurrentPage(1);
-    // fetchTransactions 会在 useEffect 中自动触发
   };
-  // =================================
 
   if (!isAuthenticated) {
     return <Login onLogin={login} error={authError} loading={authLoading} />;
@@ -121,7 +111,7 @@ function App() {
 
       <main>
         {/* 筛选栏 */}
-        <div className="filter-bar" style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
+        <div className="filter-bar">
           <div className="filter-group">
             <label>年份</label>
             <select value={filters.year} onChange={(e) => handleFilterChange('year', e.target.value)}>
@@ -168,7 +158,7 @@ function App() {
             <div style={{ display: 'flex', gap: '4px' }}>
               <input
                 type="number"
-                placeholder="最小金额"
+                placeholder="最小"
                 value={filters.minAmount}
                 onChange={(e) => handleFilterChange('minAmount', e.target.value)}
                 style={{ width: '80px' }}
@@ -176,7 +166,7 @@ function App() {
               <span>-</span>
               <input
                 type="number"
-                placeholder="最大金额"
+                placeholder="最大"
                 value={filters.maxAmount}
                 onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
                 style={{ width: '80px' }}
@@ -196,68 +186,39 @@ function App() {
           <button onClick={resetFilters} className="btn">重置</button>
         </div>
 
-        {/* 年度总结卡片 */}
-														   
         <YearlySummary year={filters.year || currentYear} />
-																   
-
-        {/* 月度趋势（可选，如果不需要可删除） */}
         <MonthlyTrend year={filters.year || currentYear} />
-
-        {/* 统计图表（含饼图点击筛选） */}
         <Stats filters={filters} onCategoryClick={handleCategoryClick} />
-
-        {/* 预算概览 */}
         <BudgetOverview month={selectedMonth} />
-
-        {/* 导入预览 */}
         <ImportPreview onImportSuccess={() => fetchTransactions(filters, currentPage)} />
 
-        {/* 交易列表 */}
         <TransactionList
           transactions={transactions}
           loading={txLoading}
           pagination={pagination}
-          onPageChange={(page) => setCurrentPage(page)}
+          onPageChange={setCurrentPage}
           onDelete={deleteTransaction}
           onUpdateCategory={updateCategory}
           categories={categories}
         />
 
-        {/* 分页控件 */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="pagination" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-            <button
-              className="page-btn"
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-            >
-              上一页
-            </button>
+          <div className="pagination">
+            <button className="page-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>上一页</button>
             <span>第 {currentPage} / {pagination.totalPages} 页</span>
-            <button
-              className="page-btn"
-              disabled={currentPage >= pagination.totalPages}
-              onClick={() => setCurrentPage(p => p + 1)}
-            >
-              下一页
-            </button>
+            <button className="page-btn" disabled={currentPage >= pagination.totalPages} onClick={() => setCurrentPage(p => p + 1)}>下一页</button>
           </div>
         )}
       </main>
 
-      {/* 预算设置弹窗 */}
       <BudgetModal
         isOpen={showBudgetModal}
         onClose={() => setShowBudgetModal(false)}
-        onSave={() => {
-          // 可刷新预算概览，实际在 BudgetOverview 组件内部已监听 month 变化自动刷新
-        }}
+        onSave={() => {}}
         month={selectedMonth}
         categories={categories}
       />
 
-      {/* 快速记账弹窗 */}
       <QuickAddModal
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}

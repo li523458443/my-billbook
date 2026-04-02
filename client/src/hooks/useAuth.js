@@ -7,10 +7,8 @@ export function useAuth() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // 检查 localStorage 中是否有保存的密码
     const savedPwd = localStorage.getItem('bill_auth');
     if (savedPwd) {
-      // 尝试自动登录
       login(savedPwd).catch(() => logout());
     } else {
       setLoading(false);
@@ -19,7 +17,6 @@ export function useAuth() {
 
   const login = async (password) => {
     setError(null);
-    setLoading(true);
     try {
       await apiFetch('/api/login', {
         method: 'POST',

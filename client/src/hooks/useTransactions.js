@@ -10,10 +10,9 @@ export function useTransactions() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filters.year) params.append('year', filters.year);
-      if (filters.month) params.append('month', filters.month);
-      if (filters.category) params.append('category', filters.category);
-      if (filters.counterparty) params.append('counterparty', filters.counterparty);
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
       params.append('page', page);
       params.append('limit', limit);
       const url = `/api/transactions?${params.toString()}`;
