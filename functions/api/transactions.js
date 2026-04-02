@@ -1,21 +1,21 @@
-// functions/api/transactions.js
 export async function onRequest(context) {
     const { request, env } = context;
+    const userId = context.userId; // 由中间件注入
     const url = new URL(request.url);
 
-    // 处理 POST 请求（手动记账）
+    // POST 手动记账
     if (request.method === 'POST') {
         const { date, type, amount, counterparty, note, category, source, transactionId } = await request.json();
         if (!date || !type || !amount) {
             return new Response(JSON.stringify({ error: '缺少必要字段' }), { status: 400 });
         }
         const result = await env.DB.prepare(
-            'INSERT INTO transactions (date, type, amount, counterparty, note, category, source, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind(date, type, amount, counterparty || '', note || '', category || '其他', source || 'manual', transactionId || '').run();
+            'INSERT INTO transactions (date, type, amount, counterparty, note, category, source, transaction_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind(date, type, amount, counterparty || '', note || '', category || '其他', source || 'manual', transactionId || '', userId).run();
         return new Response(JSON.stringify({ success: true, id: result.meta.last_row_id }));
     }
 
-    // GET 请求（列表）
+    // GET 交易列表
     const counterparty = url.searchParams.get('counterparty');
     const year = url.searchParams.get('year');
     const month = url.searchParams.get('month');
@@ -26,8 +26,8 @@ export async function onRequest(context) {
     const page = parseInt(url.searchParams.get('page')) || 1;
     const limit = parseInt(url.searchParams.get('limit')) || 50;
 
-    let whereClauses = [];
-    let params = [];
+    let whereClauses = ['user_id = ?'];
+    let params = [userId];
 
     if (counterparty) {
         whereClauses.push('counterparty LIKE ?');
@@ -58,7 +58,7 @@ export async function onRequest(context) {
         params.push(`%${noteKeyword}%`);
     }
 
-    const where = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
+    const where = 'WHERE ' + whereClauses.join(' AND ');
     const offset = (page - 1) * limit;
 
     const countResult = await env.DB.prepare(`SELECT COUNT(*) as total FROM transactions ${where}`).bind(...params).first();

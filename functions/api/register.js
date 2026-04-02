@@ -5,8 +5,8 @@ export async function onRequest(context) {
     }
 
     const { username, password } = await request.json();
-    if (!username || !password) {
-        return new Response(JSON.stringify({ error: '用户名和密码不能为空' }), { status: 400 });
+    if (!username || !password || username.length < 3 || password.length < 6) {
+        return new Response(JSON.stringify({ error: '用户名至少3位，密码至少6位' }), { status: 400 });
     }
 
     // 检查用户名是否已存在
@@ -15,9 +15,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: '用户名已存在' }), { status: 409 });
     }
 
-    // 使用 Web Crypto API 的 scrypt 派生密钥（实际存储的是 salt+hash，这里简化）
-    // 注意：scrypt 是异步的，且需要盐。为了简单，我们使用 bcryptjs 的替代方案？或者使用 pbkdf2。
-    // 但 Workers 支持 crypto.subtle.pbkdf2。
+    // 使用 PBKDF2 哈希密码
     const encoder = new TextEncoder();
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const keyMaterial = await crypto.subtle.importKey(

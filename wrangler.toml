@@ -1,8 +1,13 @@
 name = "my-billbook"
 #pages_build_output_dir = "./client/dist"
+main = "src/index.ts"  # 不需要，但保留
+
 
 [[d1_databases]]
 binding = "DB"
 database_name = "bill_db"
 database_id = "7323bde3-410e-4627-af68-2d6b7e2c4430"
 node_compat = true
+
+[env.production]
+vars = { JWT_SECRET = "qwertyui" }

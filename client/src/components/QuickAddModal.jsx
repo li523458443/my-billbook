@@ -3,6 +3,50 @@ import { useState } from 'react';
 import { apiFetch } from '../services/api';
 
 export default function QuickAddModal({ isOpen, onClose, onSuccess, categories }) {
+	const [isListening, setIsListening] = useState(false);
+	const recognitionRef = useRef(null);
+
+	const startListening = () => {
+		if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+			alert('您的浏览器不支持语音输入');
+			return;
+		}
+		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+		const recognition = new SpeechRecognition();
+		recognition.continuous = false;
+		recognition.interimResults = false;
+		recognition.lang = 'zh-CN';
+
+		recognition.onstart = () => setIsListening(true);
+		recognition.onend = () => setIsListening(false);
+		recognition.onerror = (event) => {
+			console.error('语音识别错误', event.error);
+			setIsListening(false);
+		};
+		recognition.onresult = (event) => {
+			const text = event.results[0][0].transcript;
+			// 简单解析：期望格式例如 "吃饭 50元" 或 "收入 5000"
+			parseVoiceText(text);
+		};
+		recognition.start();
+		recognitionRef.current = recognition;
+	};
+
+	const parseVoiceText = (text) => {
+		// 简单正则提取数字和类型
+		const amountMatch = text.match(/(\d+(?:\.\d+)?)/);
+		if (!amountMatch) return;
+		const amount = parseFloat(amountMatch[0]);
+		let type = 'expense';
+		if (text.includes('收入') || text.includes('工资')) type = 'income';
+		setFormData(prev => ({ ...prev, amount, type }));
+		// 可选：尝试提取对方名称（“给张三”）
+		const counterpartyMatch = text.match(/(?:给|付|收)(\w+)/);
+		if (counterpartyMatch) {
+			setFormData(prev => ({ ...prev, counterparty: counterpartyMatch[1] }));
+		}
+		alert(`已识别：${type === 'expense' ? '支出' : '收入'} ${amount}元`);
+	};
     const [formData, setFormData] = useState({
         date: new Date().toISOString().slice(0, 10),
         type: 'expense',
@@ -129,6 +173,7 @@ export default function QuickAddModal({ isOpen, onClose, onSuccess, categories }
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+						<button type="button" onClick={startListening} disabled={isListening}>   🎤 {isListening ? '聆听中...' : '语音记账'}</button>
                         <button type="button" onClick={onClose} disabled={loading}>取消</button>
                         <button type="submit" className="btn btn-primary" disabled={loading}>
                             {loading ? '保存中...' : '保存'}

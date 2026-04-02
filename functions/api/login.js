@@ -1,3 +1,5 @@
+import * as jose from 'jose';
+
 export async function onRequest(context) {
     const { request, env } = context;
     if (request.method !== 'POST') {
@@ -31,15 +33,13 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: '用户名或密码错误' }), { status: 401 });
     }
 
-    // 生成 JWT（使用 jose 库，但我们可以自己简单实现？不安全，最好用库）
-    // 由于 Workers 没有原生 JWT，我们使用 @tsndr/cloudflare-worker-jwt 或者自己实现？
-    // 为了简化，我使用一个简单的对称加密？不安全。所以这里我假设已经安装了 jose 库。
-    // 实际上，我们可以使用 Web Crypto API 生成 JWT，但很繁琐。推荐使用第三方库。
-    // 为了快速演示，我先返回一个模拟 token（实际不可用），后续再完善。
-    // 实际部署时，你需要将 jose 添加到 package.json 并在 wrangler.toml 中配置 node_compat。
-    // 这里我先给出逻辑框架，具体实现稍后提供。
+    // 生成 JWT
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
+    const token = await new jose.SignJWT({ userId: user.id })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('7d')
+        .sign(secret);
 
-    // 临时方案：返回用户 ID 和有效期（不安全，仅用于演示）
-    const token = btoa(JSON.stringify({ userId: user.id, exp: Date.now() + 7*24*60*60*1000 }));
     return new Response(JSON.stringify({ success: true, token, userId: user.id }));
 }
