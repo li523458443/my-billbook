@@ -51,6 +51,14 @@ export default function Stats({ filters }) {
         },
         options: {
           responsive: true,
+		  onClick: (event, activeElements) => {
+			  if (activeElements.length === 0) return;
+			  const index = activeElements[0].index;
+			  const clickedCategory = labels[index];
+			  if (onCategoryClick) {
+				  onCategoryClick(clickedCategory);
+			  }
+		  },
           plugins: {
             legend: { position: 'bottom' },
             tooltip: {

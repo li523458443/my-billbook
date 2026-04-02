@@ -1,6 +1,22 @@
 export async function onRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
+	const minAmount = url.searchParams.get('minAmount');
+	const maxAmount = url.searchParams.get('maxAmount');
+	const noteKeyword = url.searchParams.get('noteKeyword');
+
+	if (minAmount) {
+		whereClauses.push('amount >= ?');
+		params.push(parseFloat(minAmount));
+	}
+	if (maxAmount) {
+		whereClauses.push('amount <= ?');
+		params.push(parseFloat(maxAmount));
+	}
+	if (noteKeyword) {
+		whereClauses.push('note LIKE ?');
+		params.push(`%${noteKeyword}%`);
+	}
 
     // 处理 POST 请求（手动记账）
     if (request.method === 'POST') {

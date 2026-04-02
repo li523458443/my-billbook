@@ -34,6 +34,11 @@ function App() {
   const currentYear = new Date().getFullYear();
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('');
+  const handleCategoryClick = (category) => {
+      setFilters(prev => ({ ...prev, category }));
+      setCurrentPage(1);
+      // fetchTransactions 会在 useEffect 中自动触发
+  };
 
   // 生成当前选择的月份字符串（YYYY-MM）
   useEffect(() => {
@@ -142,6 +147,7 @@ function App() {
 
         {/* 月度趋势 */}
         <MonthlyTrend year={filters.year || currentYear} />
+		<Stats filters={filters} onCategoryClick={handleCategoryClick} />
 
         {/* 统计图表 */}
         <Stats filters={filters} />
