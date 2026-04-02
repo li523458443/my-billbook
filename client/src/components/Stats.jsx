@@ -1,8 +1,9 @@
+// client/src/components/Stats.jsx
 import { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import { apiFetch } from '../services/api';
 
-export default function Stats({ filters }) {
+export default function Stats({ filters, onCategoryClick }) {
   const [stats, setStats] = useState({ totalIncome: 0, totalExpense: 0, expenseByCategory: {} });
   const [loading, setLoading] = useState(false);
   const chartRef = useRef(null);
@@ -51,14 +52,14 @@ export default function Stats({ filters }) {
         },
         options: {
           responsive: true,
-		  onClick: (event, activeElements) => {
-			  if (activeElements.length === 0) return;
-			  const index = activeElements[0].index;
-			  const clickedCategory = labels[index];
-			  if (onCategoryClick) {
-				  onCategoryClick(clickedCategory);
-			  }
-		  },
+          onClick: (event, activeElements) => {
+            if (activeElements.length === 0) return;
+            const index = activeElements[0].index;
+            const clickedCategory = labels[index];
+            if (onCategoryClick) {
+              onCategoryClick(clickedCategory);
+            }
+          },
           plugins: {
             legend: { position: 'bottom' },
             tooltip: {
@@ -76,7 +77,7 @@ export default function Stats({ filters }) {
         }
       });
     }
-  }, [stats.expenseByCategory]);
+  }, [stats.expenseByCategory, onCategoryClick]);
 
   const balance = stats.totalIncome - stats.totalExpense;
 

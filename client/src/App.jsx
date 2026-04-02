@@ -10,6 +10,8 @@ import { apiFetch } from './services/api';
 import MonthlyTrend from './components/MonthlyTrend';
 import BudgetModal from './components/BudgetModal';
 import BudgetOverview from './components/BudgetOverview';
+import YearlySummary from './components/YearlySummary';
+
 
 function App() {
   const { isAuthenticated, loading: authLoading, error: authError, login, logout } = useAuth();
@@ -147,6 +149,7 @@ function App() {
 
         {/* 月度趋势 */}
         <MonthlyTrend year={filters.year || currentYear} />
+		<YearlySummary year={filters.year || currentYear} />
 		<Stats filters={filters} onCategoryClick={handleCategoryClick} />
 
         {/* 统计图表 */}

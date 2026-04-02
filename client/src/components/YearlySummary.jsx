@@ -1,3 +1,4 @@
+// client/src/components/YearlySummary.jsx
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../services/api';
 
@@ -15,7 +16,6 @@ export default function YearlySummary({ year }) {
         setLoading(true);
         try {
             const data = await apiFetch(`/api/stats?year=${year}`);
-            // 同时获取支出分类详情以确定最大支出类别
             const categoryData = data.expenseByCategory || {};
             let maxCategory = null;
             let maxAmount = 0;
@@ -28,7 +28,7 @@ export default function YearlySummary({ year }) {
             const totalIncome = data.totalIncome;
             const totalExpense = data.totalExpense;
             const balance = totalIncome - totalExpense;
-            const monthlyAvgExpense = totalExpense / 12; // 简单平均
+            const monthlyAvgExpense = totalExpense / 12;
             setSummary({
                 totalIncome,
                 totalExpense,
@@ -44,7 +44,7 @@ export default function YearlySummary({ year }) {
         }
     };
 
-    if (loading) return <div>加载年度总结...</div>;
+    if (loading) return <div className="card">加载年度总结...</div>;
     if (!summary) return null;
 
     return (
