@@ -4,18 +4,12 @@ export async function onRequest(context) {
     const { request, env, next } = context;
     const url = new URL(request.url);
 
-    // 放行静态资源（例如 /assets/*, /favicon.ico, /manifest.json, /icon-*.png, /sw.js）
-    if (
-        url.pathname.startsWith('/assets/') ||
-        url.pathname.startsWith('/favicon.') ||
-        url.pathname === '/manifest.json' ||
-        url.pathname === '/sw.js' ||
-        /\.(css|js|png|svg|ico)$/.test(url.pathname)
-    ) {
+    // 只拦截 /api/ 开头的请求，其他请求（如静态资源）直接放行
+    if (!url.pathname.startsWith('/api/')) {
         return next();
     }
 
-    // 排除登录和注册接口
+    // 放行登录和注册接口
     if (url.pathname === '/api/login' || url.pathname === '/api/register') {
         return next();
     }

@@ -1,19 +1,19 @@
-let token = null;
+let authToken = null;
 
-export function setToken(newToken) {
-    token = newToken;
-    if (newToken) {
-        localStorage.setItem('token', newToken);
+export function setToken(token) {
+    authToken = token;
+    if (token) {
+        localStorage.setItem('token', token);
     } else {
         localStorage.removeItem('token');
     }
 }
 
 export function getToken() {
-    if (!token) {
-        token = localStorage.getItem('token');
+    if (!authToken) {
+        authToken = localStorage.getItem('token');
     }
-    return token;
+    return authToken;
 }
 
 export async function apiFetch(endpoint, options = {}) {
@@ -21,16 +21,15 @@ export async function apiFetch(endpoint, options = {}) {
         'Content-Type': 'application/json',
         ...(options.headers || {}),
     };
-    const authToken = getToken();
-    if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
+    const token = getToken();
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
     }
     const response = await fetch(endpoint, { ...options, headers });
     if (response.status === 401) {
-        // token 失效，清除并跳转登录
         setToken(null);
-        window.location.href = '/';
-        throw new Error('登录已过期');
+        // 不自动跳转，由调用方处理
+        throw new Error('登录已过期，请重新登录');
     }
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Request failed');

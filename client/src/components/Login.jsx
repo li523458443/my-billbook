@@ -30,6 +30,7 @@ export default function Login({ onLogin, onRegister, error, loading }) {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
+                        autoComplete="username"
                     />
                     <input
                         type="password"
@@ -37,6 +38,7 @@ export default function Login({ onLogin, onRegister, error, loading }) {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        autoComplete={isRegister ? 'new-password' : 'current-password'}
                     />
                     {isRegister && (
                         <input
@@ -45,13 +47,21 @@ export default function Login({ onLogin, onRegister, error, loading }) {
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
+                            autoComplete="new-password"
                         />
                     )}
                     <button type="submit" disabled={loading}>
                         {loading ? '处理中...' : (isRegister ? '注册' : '登录')}
                     </button>
                 </form>
-                <button onClick={() => setIsRegister(!isRegister)} style={{ marginTop: '10px' }}>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setIsRegister(!isRegister);
+                        setError(null);
+                    }}
+                    style={{ marginTop: '10px' }}
+                >
                     {isRegister ? '返回登录' : '没有账号？立即注册'}
                 </button>
                 {error && <div className="error">{error}</div>}

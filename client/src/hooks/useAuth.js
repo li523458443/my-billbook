@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, setToken } from '../services/api';
+import { apiFetch, setToken, getToken } from '../services/api';
 
 export function useAuth() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -7,9 +7,10 @@ export function useAuth() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
+        // 检查本地是否有 token
+        const token = getToken();
         if (token) {
-            // 简单验证 token 是否有效（可选：调用一个验证接口）
+            // 可选：调用一个验证接口，这里简单认为有效
             setIsAuthenticated(true);
         }
         setLoading(false);
