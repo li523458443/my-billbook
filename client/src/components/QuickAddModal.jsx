@@ -1,5 +1,5 @@
 // client/src/components/QuickAddModal.jsx
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { apiFetch } from '../services/api';
 
 export default function QuickAddModal({ isOpen, onClose, onSuccess, categories }) {
