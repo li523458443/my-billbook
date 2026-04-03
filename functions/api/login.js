@@ -17,42 +17,31 @@ export async function onRequest(context) {
   try {
     const { username, password } = await request.json();
 
-    // ✅ 完全适配你的表结构：字段是 password_hash
+    // 查询用户
     const user = await env.DB.prepare(`
-      SELECT id, username, password_hash
-      FROM users
-      WHERE username = ?
-      LIMIT 1
+      SELECT id, username, password_hash FROM users WHERE username = ? LIMIT 1
     `).bind(username).first();
 
     if (!user) {
-      return new Response(JSON.stringify({ error: "账号不存在" }), {
-        status: 400, headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ error: "账号不存在" }), { status: 400, headers: corsHeaders });
     }
 
-    // ✅ 用 bcrypt 验证密码哈希（和你存库的格式完全匹配）
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return new Response(JSON.stringify({ error: "密码错误" }), {
-        status: 400, headers: corsHeaders
-      });
+    // 验证密码
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      return new Response(JSON.stringify({ error: "密码错误" }), { status: 400, headers: corsHeaders });
     }
 
-    // ✅ 统一JWT签发：和中间件编码方式完全一致
-    const secretKey = new TextEncoder().encode(env.JWT_SECRET);
+    // 签发 JWT
+    const secret = new TextEncoder().encode(env.JWT_SECRET);
     const token = await new jose.SignJWT({ userId: user.id })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("30d")
-      .sign(secretKey);
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('30d')
+      .sign(secret);
 
-    return new Response(JSON.stringify({ token, userId: user.id, username: user.username }), {
-      headers: corsHeaders
-    });
+    return new Response(JSON.stringify({ token }), { headers: corsHeaders });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: corsHeaders
-    });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 }
