@@ -1,45 +1,85 @@
 export async function onRequest(context) {
-    const { request, env, params } = context;
-    const userId = context.userId;
-    const transactionId = params.id;
+  const { request, env } = context;
 
-    // 验证交易属于当前用户
-    const transaction = await env.DB.prepare(
-        'SELECT id FROM transactions WHERE id = ? AND user_id = ?'
-    ).bind(transactionId, userId).first();
-    if (!transaction) {
-        return new Response(JSON.stringify({ error: '交易不存在或无权访问' }), { status: 404 });
+  // 统一跨域头
+  const corsHeaders = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization"
+  };
+
+  // 处理 OPTIONS 预检
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // ✅ 修复：从 context.data 拿 userId
+    const userId = context.data.userId;
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "未授权" }),
+        { status: 401, headers: corsHeaders }
+      );
     }
 
-    // POST 添加标签
+    const url = new URL(request.url);
+
+    // GET 获取用户所有标签
+    if (request.method === 'GET') {
+      const { results } = await env.DB.prepare(
+        'SELECT id, name FROM tags WHERE user_id = ? ORDER BY name'
+      ).bind(userId).all();
+
+      return new Response(JSON.stringify(results), { headers: corsHeaders });
+    }
+
+    // POST 创建标签
     if (request.method === 'POST') {
-        const { tagId } = await request.json();
-        if (!tagId) return new Response(JSON.stringify({ error: '缺少 tagId' }), { status: 400 });
-        // 验证标签属于当前用户
-        const tag = await env.DB.prepare('SELECT id FROM tags WHERE id = ? AND user_id = ?').bind(tagId, userId).first();
-        if (!tag) return new Response(JSON.stringify({ error: '标签不存在' }), { status: 404 });
-        try {
-            await env.DB.prepare(
-                'INSERT INTO transaction_tags (transaction_id, tag_id) VALUES (?, ?)'
-            ).bind(transactionId, tagId).run();
-            return new Response(JSON.stringify({ success: true }));
-        } catch (err) {
-            if (err.message.includes('UNIQUE constraint failed')) {
-                return new Response(JSON.stringify({ error: '标签已关联' }), { status: 409 });
-            }
-            throw err;
+      const { name } = await request.json();
+
+      if (!name || name.trim() === '') {
+        return new Response(
+          JSON.stringify({ error: '标签名不能为空' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      try {
+        const result = await env.DB.prepare(
+          'INSERT INTO tags (user_id, name) VALUES (?, ?)'
+        ).bind(userId, name.trim()).run();
+
+        return new Response(
+          JSON.stringify({
+            id: result.meta.last_row_id,
+            name: name.trim()
+          }),
+          { status: 201, headers: corsHeaders }
+        );
+      } catch (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+          return new Response(
+            JSON.stringify({ error: '标签已存在' }),
+            { status: 409, headers: corsHeaders }
+          );
         }
+        throw err;
+      }
     }
 
-    // DELETE 移除标签
-    if (request.method === 'DELETE') {
-        const { tagId } = await request.json();
-        if (!tagId) return new Response(JSON.stringify({ error: '缺少 tagId' }), { status: 400 });
-        await env.DB.prepare(
-            'DELETE FROM transaction_tags WHERE transaction_id = ? AND tag_id = ?'
-        ).bind(transactionId, tagId).run();
-        return new Response(JSON.stringify({ success: true }));
-    }
+    // 不支持的方法
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: corsHeaders }
+    );
 
-    return new Response('Method not allowed', { status: 405 });
+  } catch (err) {
+    // 全局异常捕获，防止返回 HTML
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
 }

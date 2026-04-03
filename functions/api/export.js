@@ -1,6 +1,28 @@
 export async function onRequest(context) {
-    const { request, env } = context;
-    const userId = context.userId;
+  const { request, env } = context;
+
+  // 统一跨域头
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization"
+  };
+
+  // 处理 OPTIONS 预检
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // ✅ 修复 1：从 context.data 拿 userId
+    const userId = context.data.userId;
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "未授权" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const url = new URL(request.url);
     const format = url.searchParams.get('format') || 'json';
     const year = url.searchParams.get('year');
@@ -8,39 +30,58 @@ export async function onRequest(context) {
 
     let where = 'WHERE user_id = ?';
     const params = [userId];
+
     if (year) {
-        where += ' AND strftime("%Y", date) = ?';
-        params.push(year);
-        if (month) {
-            where += ' AND strftime("%m", date) = ?';
-            params.push(month.padStart(2, '0'));
-        }
+      where += ' AND strftime("%Y", date) = ?';
+      params.push(year);
+
+      if (month) {
+        where += ' AND strftime("%m", date) = ?';
+        params.push(month.padStart(2, '0'));
+      }
     }
 
+    // 查询数据
     const { results } = await env.DB.prepare(`
-        SELECT date, type, amount, counterparty, note, category, source, transaction_id
-        FROM transactions ${where} ORDER BY date DESC
+      SELECT date, type, amount, counterparty, note, category, source, transaction_id
+      FROM transactions ${where} ORDER BY date DESC
     `).bind(...params).all();
 
+    // CSV 导出
     if (format === 'csv') {
-        const headers = ['日期', '类型', '金额', '对方', '备注', '分类', '来源', '交易单号'];
-        const rows = results.map(r => [
-            r.date,
-            r.type === 'expense' ? '支出' : '收入',
-            r.amount,
-            r.counterparty,
-            r.note,
-            r.category,
-            r.source,
-            r.transaction_id
-        ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(','));
-        const csv = [headers.join(','), ...rows].join('\n');
-        return new Response(csv, {
-            headers: {
-                'Content-Type': 'text/csv;charset=utf-8',
-                'Content-Disposition': `attachment; filename="bills_${year || 'all'}${month || ''}.csv"`
-            }
-        });
+      const headers = ['日期', '类型', '金额', '对方', '备注', '分类', '来源', '交易单号'];
+      const rows = results.map(r => [
+        r.date,
+        r.type === 'expense' ? '支出' : '收入',
+        r.amount,
+        r.counterparty || '',
+        r.note || '',
+        r.category || '',
+        r.source || '',
+        r.transaction_id || ''
+      ].map(f => `"${String(f).replace(/"/g, '""')}"`).join(','));
+
+      const csv = [headers.join(','), ...rows].join('\n');
+
+      return new Response(csv, {
+        headers: {
+          'Content-Type': 'text/csv;charset=utf-8',
+          'Content-Disposition': `attachment; filename="bills_${year || 'all'}${month || ''}.csv"`,
+          ...corsHeaders
+        }
+      });
     }
-    return new Response(JSON.stringify(results));
+
+    // JSON 返回
+    return new Response(JSON.stringify(results), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+
+  } catch (err) {
+    // 错误统一返回 JSON
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 }
