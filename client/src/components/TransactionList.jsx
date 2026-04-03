@@ -8,11 +8,11 @@ export default function TransactionList({
     onUpdateCategory,
     categories = []
 }) {
-    if (loading) return <div>加载中...</div>;
-    if (!transactions || transactions.length === 0) return <div>暂无交易记录</div>;
+    if (loading) return <div className="loading-center">加载中...</div>;
+    if (!transactions || transactions.length === 0) return <div className="empty-state">暂无交易记录</div>;
 
     return (
-        <>
+        <div className="table-container">
             <table className="transaction-table">
                 <thead>
                     <tr>
@@ -28,43 +28,66 @@ export default function TransactionList({
                 <tbody>
                     {transactions.map((t) => (
                         <tr key={t.id}>
-                            <td>{t.date}</td>
-                            <td>{t.type === 'expense' ? '支出' : '收入'}</td>
-                            <td style={{ color: t.type === 'expense' ? '#ef4444' : '#10b981' }}>
-                                {Math.abs(t.amount).toFixed(2)}
+                            <td data-label="日期">{t.date}</td>
+                            <td data-label="类型">
+                                {t.type === 'expense' ? '支出' : '收入'}
                             </td>
-                            <td>{t.counterparty || '-'}</td>
-                            <td>
+                            <td data-label="金额" style={{
+                                color: t.type === 'expense' ? '#ef4444' : '#10b981',
+                                fontWeight: 600
+                            }}>
+                                ¥{Math.abs(t.amount).toFixed(2)}
+                            </td>
+                            <td data-label="对方">{t.counterparty || '-'}</td>
+                            <td data-label="分类">
                                 <select
-                                    value={t.category}
+                                    value={t.category || ''}
                                     onChange={(e) => onUpdateCategory(t.id, e.target.value)}
+                                    className="table-select"
                                 >
                                     {categories.map(cat => (
                                         <option key={cat} value={cat}>{cat}</option>
                                     ))}
                                 </select>
                             </td>
-                            <td>
-                                {t.source === 'wechat' ? '微信' : t.source === 'alipay' ? '支付宝' : '云闪付'}
+                            <td data-label="来源">
+                                {t.source === 'wechat' ? '微信' 
+                                 : t.source === 'alipay' ? '支付宝' 
+                                 : t.source === 'unionpay' ? '云闪付' 
+                                 : '其他'}
                             </td>
-                            <td>
-                                <button onClick={() => onDelete(t.id)}>删除</button>
+                            <td data-label="操作">
+                                <button 
+                                    onClick={() => onDelete(t.id)}
+                                    className="btn btn-sm btn-danger"
+                                >
+                                    删除
+                                </button>
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+
             {pagination && pagination.totalPages > 1 && (
                 <div className="pagination">
-                    <button onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page <= 1}>
+                    <button 
+                        onClick={() => onPageChange(pagination.page - 1)} 
+                        disabled={pagination.page <= 1}
+                        className="page-btn"
+                    >
                         上一页
                     </button>
                     <span>第 {pagination.page} / {pagination.totalPages} 页</span>
-                    <button onClick={() => onPageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}>
+                    <button 
+                        onClick={() => onPageChange(pagination.page + 1)} 
+                        disabled={pagination.page >= pagination.totalPages}
+                        className="page-btn"
+                    >
                         下一页
                     </button>
                 </div>
             )}
-        </>
+        </div>
     );
 }
