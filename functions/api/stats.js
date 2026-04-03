@@ -10,7 +10,7 @@ export async function onRequest(context) {
   try {
     const { request, env } = context;
     const url = new URL(request.url);
-    const userId = context.userId;
+    const userId = context.data.userId;
 
     // ✅ OPTIONS 预检直接放行（解决前端跨域预检失败）
     if (request.method === 'OPTIONS') {

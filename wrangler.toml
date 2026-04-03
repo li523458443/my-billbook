@@ -10,4 +10,4 @@ database_id = "7323bde3-410e-4627-af68-2d6b7e2c4430"
 node_compat = true
 
 [env.production]
-vars = { JWT_SECRET = "qwertyui" }
+vars = { JWT_SECRET = "kG3tM5eW6wA1nL4oT6bB" }
