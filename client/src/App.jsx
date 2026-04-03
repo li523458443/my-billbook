@@ -93,7 +93,7 @@ function App() {
   };
 
   if (!isAuthenticated) {
-    return <Login onLogin={login} onRegister={register} error={authError} loading={authLoading} /> />;
+    return <Login onLogin={login} onRegister={register} error={authError} loading={authLoading} /> ;
   }
 
   return (
