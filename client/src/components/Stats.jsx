@@ -80,6 +80,8 @@ export default function Stats({ filters, onCategoryClick }) {
 
     const balance = stats.totalIncome - stats.totalExpense;
 
+    if (loading) return <div>加载统计数据...</div>;
+
     return (
         <div className="card">
             <div className="stats-grid">

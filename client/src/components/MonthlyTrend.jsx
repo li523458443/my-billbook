@@ -78,6 +78,7 @@ export default function MonthlyTrend({ year }) {
     }, [data]);
 
     if (loading) return <div>加载月度趋势...</div>;
+    if (!data.monthlyData || data.monthlyData.length === 0) return <div>暂无月度数据</div>;
 
     return (
         <div className="card">
