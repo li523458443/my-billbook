@@ -13,7 +13,6 @@ export async function onRequest(context) {
   }
 
   try {
-    // ✅ 修复：从 context.data 拿 userId
     const userId = context.data.userId;
     if (!userId) {
       return new Response(JSON.stringify({ error: "未授权" }), {
@@ -39,7 +38,7 @@ export async function onRequest(context) {
 
       if (t.transactionId && t.transactionId.trim()) {
         existing = await env.DB.prepare(`
-          SELECT id, date, amount, counterparty, type, category, source 
+          SELECT id, date, amount, counterparty, type, category, source, note 
           FROM transactions 
           WHERE user_id = ? AND transaction_id = ?
         `).bind(userId, t.transactionId).first();
@@ -51,7 +50,7 @@ export async function onRequest(context) {
 
       if (!existing && (!t.transactionId || !t.transactionId.trim())) {
         existing = await env.DB.prepare(`
-          SELECT id, date, amount, counterparty, type, category, source 
+          SELECT id, date, amount, counterparty, type, category, source, note 
           FROM transactions 
           WHERE user_id = ? 
             AND date = ? 
@@ -75,6 +74,7 @@ export async function onRequest(context) {
           existingType: existing.type,
           existingCategory: existing.category,
           existingSource: existing.source,
+          existingNote: existing.note,
           duplicateReason: reason,
         });
       } else {

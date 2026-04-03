@@ -21,17 +21,20 @@ export async function onRequest(context) {
       });
     }
 
-    // 修改分类
+    // 修改交易（快速记账保存）
     if (request.method === 'PUT') {
-      const { category } = await request.json();
-      await env.DB.prepare(
-        'UPDATE transactions SET category = ? WHERE id = ? AND user_id = ?'
-      ).bind(category, id, userId).run();
+      const { type, category, amount, date, note, counterparty, source, transaction_id } = await request.json();
+      
+      await env.DB.prepare(`
+        UPDATE transactions 
+        SET type = ?, category = ?, amount = ?, date = ?, note = ?, counterparty = ?, source = ?, transaction_id = ?
+        WHERE id = ? AND user_id = ?
+      `).bind(type, category, amount, date, note || "", counterparty || "", source || "", transaction_id || "", id, userId).run();
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // 删除
+    // 删除交易
     if (request.method === 'DELETE') {
       await env.DB.prepare(
         'DELETE FROM transactions WHERE id = ? AND user_id = ?'

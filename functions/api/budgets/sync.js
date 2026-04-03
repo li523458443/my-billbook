@@ -33,47 +33,38 @@ export async function onRequest(context) {
       });
     }
 
-    // 事务
-    await env.DB.prepare('BEGIN TRANSACTION').run();
+    // ✅ 修复：删除原生 BEGIN/COMMIT，用 D1 原子操作
+    // 1. 先查现有预算
+    const existing = await env.DB.prepare(`
+      SELECT id, category FROM budgets 
+      WHERE user_id = ? AND month = ?
+    `).bind(userId, month).all();
 
-    try {
-      // 查该用户该月现有预算
-      const existing = await env.DB.prepare(`
-        SELECT category FROM budgets 
-        WHERE user_id = ? AND month = ?
-      `).bind(userId, month).all();
+    const existingCategories = existing.results.map(r => r.category);
+    const newCategories = budgets.map(b => b.category).filter(c => c?.trim());
+    const toDelete = existingCategories.filter(c => !newCategories.includes(c));
 
-      const existingCategories = existing.results.map(r => r.category);
-      const newCategories = budgets.map(b => b.category).filter(c => c?.trim());
-      const toDelete = existingCategories.filter(c => !newCategories.includes(c));
-
-      // 删除不需要的
-      for (const cat of toDelete) {
-        await env.DB.prepare(`
-          DELETE FROM budgets 
-          WHERE user_id = ? AND month = ? AND category = ?
-        `).bind(userId, month, cat).run();
-      }
-
-      // 插入/更新
-      for (const { category, amount } of budgets) {
-        if (category && amount > 0) {
-          await env.DB.prepare(`
-            INSERT INTO budgets (user_id, category, month, amount, updated_at) 
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) 
-            ON CONFLICT(user_id, category, month) 
-            DO UPDATE SET amount = excluded.amount, updated_at = CURRENT_TIMESTAMP
-          `).bind(userId, category, month, amount).run();
-        }
-      }
-
-      await env.DB.prepare('COMMIT').run();
-      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
-
-    } catch (err) {
-      await env.DB.prepare('ROLLBACK').run();
-      throw err;
+    // 2. 批量删除不需要的预算
+    if (toDelete.length > 0) {
+      const deleteStmts = toDelete.map(cat => 
+        env.DB.prepare(`DELETE FROM budgets WHERE user_id = ? AND month = ? AND category = ?`)
+          .bind(userId, month, cat)
+      );
+      await env.DB.batch(deleteStmts);
     }
+
+    // 3. 批量插入/更新预算
+    const upsertStmts = budgets.map(({ category, amount }) => 
+      env.DB.prepare(`
+        INSERT INTO budgets (user_id, category, month, amount, updated_at) 
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) 
+        ON CONFLICT(user_id, category, month) 
+        DO UPDATE SET amount = excluded.amount, updated_at = CURRENT_TIMESTAMP
+      `).bind(userId, category, month, amount)
+    );
+    await env.DB.batch(upsertStmts);
+
+    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {

@@ -13,7 +13,6 @@ export async function onRequest(context) {
   }
 
   try {
-    // ✅ 修复：从 context.data 拿 userId
     const userId = context.data.userId;
     if (!userId) {
       return new Response(JSON.stringify({ error: "未授权" }), {

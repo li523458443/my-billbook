@@ -12,12 +12,10 @@ export async function onRequest(context) {
   }
 
   try {
-    // 从中间件获取用户ID
     const userId = context.data.userId;
     if (!userId) {
       return new Response(JSON.stringify({ error: "未授权" }), {
-        status: 401,
-        headers: corsHeaders
+        status: 401, headers: corsHeaders
       });
     }
 
@@ -26,16 +24,15 @@ export async function onRequest(context) {
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
-    // 查询交易列表（仅当前用户）
+    // ✅ 修复：description → note，完全适配你的表
     const { results } = await env.DB.prepare(`
-      SELECT id, type, category, amount, date, description
+      SELECT id, type, category, amount, date, note, counterparty, source, transaction_id
       FROM transactions
       WHERE user_id = ?
       ORDER BY date DESC
       LIMIT ? OFFSET ?
     `).bind(userId, limit, offset).all();
 
-    // 查询总数
     const { total } = await env.DB.prepare(`
       SELECT COUNT(*) as total
       FROM transactions
@@ -52,8 +49,7 @@ export async function onRequest(context) {
 
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: corsHeaders
+      status: 500, headers: corsHeaders
     });
   }
 }

@@ -1,20 +1,17 @@
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // 统一跨域头
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization"
   };
 
-  // 处理 OPTIONS 预检
   if (request.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // ✅ 修复 1：从 context.data 拿 userId
     const userId = context.data.userId;
     if (!userId) {
       return new Response(
@@ -41,13 +38,12 @@ export async function onRequest(context) {
       }
     }
 
-    // 查询数据
+    // ✅ 修复：description → note
     const { results } = await env.DB.prepare(`
       SELECT date, type, amount, counterparty, note, category, source, transaction_id
       FROM transactions ${where} ORDER BY date DESC
     `).bind(...params).all();
 
-    // CSV 导出
     if (format === 'csv') {
       const headers = ['日期', '类型', '金额', '对方', '备注', '分类', '来源', '交易单号'];
       const rows = results.map(r => [
@@ -72,13 +68,11 @@ export async function onRequest(context) {
       });
     }
 
-    // JSON 返回
     return new Response(JSON.stringify(results), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
   } catch (err) {
-    // 错误统一返回 JSON
     return new Response(
       JSON.stringify({ error: err.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
