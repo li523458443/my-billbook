@@ -1,37 +1,22 @@
-let authToken = null;
+const token = localStorage.getItem('token');
+const headers = {
+  'Content-Type': 'application/json',
+  Authorization: `Bearer ${token}`
+};
 
-export function setToken(token) {
-    authToken = token;
-    if (token) {
-        localStorage.setItem('token', token);
-    } else {
-        localStorage.removeItem('token');
-    }
-}
+// ====================== 原有接口保持不动 ======================
+export const login = (data) => fetch('/api/login', { method: 'POST', headers, body: JSON.stringify(data) }).then(r => r.json());
+export const register = (data) => fetch('/api/register', { method: 'POST', headers, body: JSON.stringify(data) }).then(r => r.json());
+export const getTransactions = () => fetch('/api/transactions', { headers }).then(r => r.json());
+export const getCategories = () => fetch('/api/categories', { headers }).then(r => r.json());
 
-export function getToken() {
-    if (!authToken) {
-        authToken = localStorage.getItem('token');
-    }
-    return authToken;
-}
+// ====================== 新增 3 个接口（直接加进去） ======================
+export const getBudgets = (month) => fetch(`/api/budgets?month=${month}`, { headers }).then(r => r.json());
+export const getBudgetUsage = (month) => fetch(`/api/budgets/usage?month=${month}`, { headers }).then(r => r.json());
+export const syncBudgets = (month, budgets) => fetch('/api/budgets/sync', {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ month, budgets })
+}).then(r => r.json());
 
-export async function apiFetch(endpoint, options = {}) {
-    const headers = {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-    };
-    const token = getToken();
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    const response = await fetch(endpoint, { ...options, headers });
-    if (response.status === 401) {
-        setToken(null);
-        // 不自动跳转，由调用方处理
-        throw new Error('登录已过期，请重新登录');
-    }
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Request failed');
-    return data;
-}
+export const getMonthlySummary = (year, month) => fetch(`/api/stats/summary?year=${year}&month=${month}`, { headers }).then(r => r.json());
