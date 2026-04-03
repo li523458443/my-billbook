@@ -11,20 +11,22 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 从中间件安全拿登录用户ID
-  const userId = context.data.userId;
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "未授权" }), {
-      status: 401,
-      headers: corsHeaders
-    });
-  }
-
   try {
-    // 只查当前用户自己的分类，多用户隔离
-    const { results } = await env.DB.prepare(
-      "SELECT DISTINCT category FROM transactions WHERE user_id = ? ORDER BY category"
-    ).bind(userId).all();
+    const userId = context.data.userId;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "未授权" }), {
+        status: 401,
+        headers: corsHeaders
+      });
+    }
+
+    // 查询当前用户的分类
+    const { results } = await env.DB.prepare(`
+      SELECT DISTINCT category
+      FROM transactions
+      WHERE user_id = ?
+      ORDER BY category
+    `).bind(userId).all();
 
     const dbCategories = results
       .map(row => row.category)
@@ -34,6 +36,7 @@ export async function onRequest(context) {
     const all = [...new Set([...preset, ...dbCategories])].sort();
 
     return new Response(JSON.stringify(all), { headers: corsHeaders });
+
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,

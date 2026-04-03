@@ -16,28 +16,44 @@ export async function onRequest(context) {
   try {
     const { username, password } = await request.json();
 
+    // 校验输入
     if (!username || !password) {
-      return new Response(JSON.stringify({ error: "用户名密码不能为空" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "用户名和密码不能为空" }), {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    // 检查用户名是否存在
-    const exists = await env.DB.prepare("SELECT id FROM users WHERE username = ? LIMIT 1").bind(username).first();
-    if (exists) {
-      return new Response(JSON.stringify({ error: "用户名已存在" }), { status: 400, headers: corsHeaders });
+    // 检查用户名是否已存在
+    const existingUser = await env.DB.prepare(`
+      SELECT id FROM users WHERE username = ? LIMIT 1
+    `).bind(username).first();
+
+    if (existingUser) {
+      return new Response(JSON.stringify({ error: "用户名已存在" }), {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    // 密码加密
+    // 生成bcrypt哈希
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // ✅ 修复：id 是 INTEGER 自增，不用传！
+    // 插入用户（id自增，无需手动传入）
     await env.DB.prepare(`
-      INSERT INTO users (username, password_hash)
-      VALUES (?, ?)
+      INSERT INTO users (username, password_hash, created_at)
+      VALUES (?, ?, datetime('now'))
     `).bind(username, passwordHash).run();
 
-    return new Response(JSON.stringify({ success: true, message: "注册成功" }), { headers: corsHeaders });
+    return new Response(JSON.stringify({
+      success: true,
+      message: "注册成功"
+    }), { headers: corsHeaders });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 }

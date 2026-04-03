@@ -1,40 +1,49 @@
 export async function onRequest(context) {
-    const { request, env } = context;
-    const userId = context.userId;
+  const { request, env } = context;
+  const corsHeaders = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization"
+  };
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const userId = context.data.userId;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "未授权" }), {
+        status: 401,
+        headers: corsHeaders
+      });
+    }
+
     const url = new URL(request.url);
     const month = url.searchParams.get('month');
 
-    if (request.method === 'GET') {
-        let query = 'SELECT id, category, month, amount FROM budgets WHERE user_id = ?';
-        const params = [userId];
-        if (month) {
-            query += ' AND month = ?';
-            params.push(month);
-        }
-        query += ' ORDER BY category';
-        const { results } = await env.DB.prepare(query).bind(...params).all();
-        return new Response(JSON.stringify(results), { headers: { 'Content-Type': 'application/json' } });
+    if (!month) {
+      return new Response(JSON.stringify({ error: "缺少month参数" }), {
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    if (request.method === 'POST') {
-        const { category, month, amount } = await request.json();
-        if (!category || !month || amount === undefined) {
-            return new Response(JSON.stringify({ error: '缺少必要参数' }), { status: 400 });
-        }
-        await env.DB.prepare(
-            `INSERT INTO budgets (category, month, amount, user_id, updated_at) 
-             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) 
-             ON CONFLICT(category, month, user_id) DO UPDATE SET amount = excluded.amount, updated_at = CURRENT_TIMESTAMP`
-        ).bind(category, month, amount, userId).run();
-        return new Response(JSON.stringify({ success: true }));
-    }
+    // 查询当前用户该月预算
+    const { results } = await env.DB.prepare(`
+      SELECT id, category, amount, month
+      FROM budgets
+      WHERE user_id = ? AND month = ?
+      ORDER BY category
+    `).bind(userId, month).all();
 
-    if (request.method === 'DELETE') {
-        const id = url.searchParams.get('id');
-        if (!id) return new Response(JSON.stringify({ error: '缺少 id' }), { status: 400 });
-        await env.DB.prepare('DELETE FROM budgets WHERE id = ? AND user_id = ?').bind(id, userId).run();
-        return new Response(JSON.stringify({ success: true }));
-    }
+    return new Response(JSON.stringify(results), { headers: corsHeaders });
 
-    return new Response('Method not allowed', { status: 405 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
 }
