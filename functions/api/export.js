@@ -1,14 +1,15 @@
 export async function onRequest(context) {
     const { request, env } = context;
+    const userId = context.userId;
     const url = new URL(request.url);
     const format = url.searchParams.get('format') || 'json';
     const year = url.searchParams.get('year');
     const month = url.searchParams.get('month');
 
-    let where = '';
-    const params = [];
+    let where = 'WHERE user_id = ?';
+    const params = [userId];
     if (year) {
-        where = ' WHERE strftime("%Y", date) = ?';
+        where += ' AND strftime("%Y", date) = ?';
         params.push(year);
         if (month) {
             where += ' AND strftime("%m", date) = ?';

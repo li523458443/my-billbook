@@ -1,3 +1,5 @@
+import * as jose from 'jose';
+
 export async function onRequest(context) {
     const { request, env } = context;
     if (request.method !== 'POST') {
@@ -5,8 +7,11 @@ export async function onRequest(context) {
     }
 
     const { username, password } = await request.json();
-    if (!username || !password || username.length < 3 || password.length < 6) {
-        return new Response(JSON.stringify({ error: '用户名至少3位，密码至少6位' }), { status: 400 });
+    if (!username || !password) {
+        return new Response(JSON.stringify({ error: '用户名和密码不能为空' }), { status: 400 });
+    }
+    if (password.length < 6) {
+        return new Response(JSON.stringify({ error: '密码长度至少6位' }), { status: 400 });
     }
 
     // 检查用户名是否已存在
@@ -15,7 +20,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: '用户名已存在' }), { status: 409 });
     }
 
-    // 使用 PBKDF2 哈希密码
+    // 使用 PBKDF2 哈希密码（兼容 Workers 环境，无需额外依赖）
     const encoder = new TextEncoder();
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const keyMaterial = await crypto.subtle.importKey(

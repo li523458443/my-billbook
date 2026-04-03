@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, setAuthToken } from '../services/api';
+import { apiFetch, setToken } from '../services/api';
 
 export function useAuth() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -7,9 +7,9 @@ export function useAuth() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem('token');
         if (token) {
-            setAuthToken(token);
+            // 简单验证 token 是否有效（可选：调用一个验证接口）
             setIsAuthenticated(true);
         }
         setLoading(false);
@@ -22,7 +22,7 @@ export function useAuth() {
                 method: 'POST',
                 body: JSON.stringify({ username, password }),
             });
-            setAuthToken(data.token);
+            setToken(data.token);
             setIsAuthenticated(true);
         } catch (err) {
             setError(err.message);
@@ -46,7 +46,7 @@ export function useAuth() {
     };
 
     const logout = () => {
-        setAuthToken(null);
+        setToken(null);
         setIsAuthenticated(false);
     };
 

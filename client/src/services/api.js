@@ -1,12 +1,19 @@
-let authToken = null;
+let token = null;
 
-export function setAuthToken(token) {
-    authToken = token;
-    if (token) {
-        localStorage.setItem('auth_token', token);
+export function setToken(newToken) {
+    token = newToken;
+    if (newToken) {
+        localStorage.setItem('token', newToken);
     } else {
-        localStorage.removeItem('auth_token');
+        localStorage.removeItem('token');
     }
+}
+
+export function getToken() {
+    if (!token) {
+        token = localStorage.getItem('token');
+    }
+    return token;
 }
 
 export async function apiFetch(endpoint, options = {}) {
@@ -14,14 +21,14 @@ export async function apiFetch(endpoint, options = {}) {
         'Content-Type': 'application/json',
         ...(options.headers || {}),
     };
-    const token = authToken || localStorage.getItem('auth_token');
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    const authToken = getToken();
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
     }
     const response = await fetch(endpoint, { ...options, headers });
     if (response.status === 401) {
         // token 失效，清除并跳转登录
-        setAuthToken(null);
+        setToken(null);
         window.location.href = '/';
         throw new Error('登录已过期');
     }

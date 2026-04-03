@@ -1,9 +1,10 @@
 export async function onRequest(context) {
-    const { env } = context;
-    // 从数据库中查询已有的分类
+    const { request, env } = context;
+    const userId = context.userId;
+    // 从数据库中查询该用户已有的分类
     const { results } = await env.DB.prepare(
-        "SELECT DISTINCT category FROM transactions ORDER BY category"
-    ).all();
+        "SELECT DISTINCT category FROM transactions WHERE user_id = ? ORDER BY category"
+    ).bind(userId).all();
     const dbCategories = results.map(row => row.category).filter(c => c && c.trim() !== '');
     // 预设分类
     const preset = ['餐饮','交通','购物','娱乐','人情往来','医疗','住房','利息','退款','其他'];

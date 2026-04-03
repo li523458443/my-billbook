@@ -1,5 +1,6 @@
 export async function onRequest(context) {
     const { request, env } = context;
+    const userId = context.userId;
     const { transactions } = await request.json();
     if (!Array.isArray(transactions) || transactions.length === 0) {
         return new Response(JSON.stringify({ error: '没有数据' }), { status: 400 });
@@ -13,14 +14,14 @@ export async function onRequest(context) {
         let reason = '';
         if (t.transactionId && t.transactionId.trim()) {
             existing = await env.DB.prepare(
-                'SELECT id, date, amount, counterparty, type, category, source FROM transactions WHERE transaction_id = ?'
-            ).bind(t.transactionId).first();
+                'SELECT id, date, amount, counterparty, type, category, source FROM transactions WHERE user_id = ? AND transaction_id = ?'
+            ).bind(userId, t.transactionId).first();
             if (existing) reason = `订单号重复 (已有记录 ID=${existing.id})`;
         }
         if (!existing && (!t.transactionId || !t.transactionId.trim())) {
             existing = await env.DB.prepare(
-                'SELECT id, date, amount, counterparty, type, category, source FROM transactions WHERE date = ? AND amount = ? AND counterparty = ? AND type = ?'
-            ).bind(t.date, t.amount, t.counterparty || '', t.type).first();
+                'SELECT id, date, amount, counterparty, type, category, source FROM transactions WHERE user_id = ? AND date = ? AND amount = ? AND counterparty = ? AND type = ?'
+            ).bind(userId, t.date, t.amount, t.counterparty || '', t.type).first();
             if (existing) reason = `复合键重复 (ID=${existing.id})`;
         }
         if (existing) {

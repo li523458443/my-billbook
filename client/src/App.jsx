@@ -13,7 +13,7 @@ import BudgetOverview from './components/BudgetOverview';
 import { apiFetch } from './services/api';
 
 function App() {
-  const { isAuthenticated, loading: authLoading, error: authError, login, logout } = useAuth();
+  const { isAuthenticated, loading, error, login, register, logout } = useAuth();
   const {
     transactions,
     pagination,
@@ -93,7 +93,7 @@ function App() {
   };
 
   if (!isAuthenticated) {
-    return <Login onLogin={login} onRegister={register} error={authError} loading={authLoading} /> ;
+    return <Login onLogin={login} onRegister={register} error={error} loading={loading} /> ;
   }
 
   return (

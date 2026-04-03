@@ -1,12 +1,15 @@
 export async function onRequest(context) {
     const { request, env } = context;
+    const userId = context.userId;
     const url = new URL(request.url);
     const month = url.searchParams.get('month');
     if (!month) {
         return new Response(JSON.stringify({ error: '缺少 month 参数' }), { status: 400 });
     }
 
-    const budgets = await env.DB.prepare('SELECT category, amount FROM budgets WHERE month = ?').bind(month).all();
+    const budgets = await env.DB.prepare(
+        'SELECT category, amount FROM budgets WHERE user_id = ? AND month = ?'
+    ).bind(userId, month).all();
     if (budgets.results.length === 0) {
         return new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
     }
@@ -16,9 +19,9 @@ export async function onRequest(context) {
     const expenses = await env.DB.prepare(
         `SELECT category, COALESCE(SUM(amount), 0) as spent 
          FROM transactions 
-         WHERE type = 'expense' AND strftime("%Y", date) = ? AND strftime("%m", date) = ? 
+         WHERE user_id = ? AND type = 'expense' AND strftime("%Y", date) = ? AND strftime("%m", date) = ? 
          GROUP BY category`
-    ).bind(year, monthNum).all();
+    ).bind(userId, year, monthNum).all();
 
     const spentMap = {};
     for (const row of expenses.results) {
