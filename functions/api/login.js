@@ -1,4 +1,5 @@
 import * as jose from 'jose';
+import bcrypt from 'bcryptjs';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -14,36 +15,44 @@ export async function onRequest(context) {
   }
 
   try {
-    const body = await request.json();
-    const { username, password } = body;
+    const { username, password } = await request.json();
 
-    // ========== 这里替换成你真实D1用户查询逻辑 ==========
-    // 示例查用户，你自己表结构对应改
-    const user = await env.DB.prepare(
-      "SELECT id FROM users WHERE username = ? AND password = ? LIMIT 1"
-    ).bind(username, password).first();
+    // ✅ 完全适配你的表结构：字段是 password_hash
+    const user = await env.DB.prepare(`
+      SELECT id, username, password_hash
+      FROM users
+      WHERE username = ?
+      LIMIT 1
+    `).bind(username).first();
 
     if (!user) {
-      return new Response(JSON.stringify({ error: "账号密码错误" }), {
-        status: 400,
-        headers: corsHeaders
+      return new Response(JSON.stringify({ error: "账号不存在" }), {
+        status: 400, headers: corsHeaders
       });
     }
 
-    // 🔴【最关键统一步骤】和校验端秘钥编码完全一致
-    const secretKey = new TextEncoder().encode(env.JWT_SECRET);
+    // ✅ 用 bcrypt 验证密码哈希（和你存库的格式完全匹配）
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return new Response(JSON.stringify({ error: "密码错误" }), {
+        status: 400, headers: corsHeaders
+      });
+    }
 
-    // 签发标准HS256 JWT，有效期30天可改
+    // ✅ 统一JWT签发：和中间件编码方式完全一致
+    const secretKey = new TextEncoder().encode(env.JWT_SECRET);
     const token = await new jose.SignJWT({ userId: user.id })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("30d")
       .sign(secretKey);
 
-    return new Response(JSON.stringify({ token }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ token, userId: user.id, username: user.username }), {
+      headers: corsHeaders
+    });
+
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: corsHeaders
+      status: 500, headers: corsHeaders
     });
   }
 }

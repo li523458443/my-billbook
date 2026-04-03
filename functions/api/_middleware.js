@@ -39,10 +39,10 @@ export async function onRequest(context) {
   const token = authHeader.slice(7).trim();
 
   try {
-    // 🔴 统一：TextEncoder编码秘钥，和登录签发完全一致
+    // 统一：TextEncoder编码秘钥，和登录签发完全一致
     const secret = new TextEncoder().encode(env.JWT_SECRET);
     const { payload } = await jose.jwtVerify(token, secret);
-    // 🔴 Cloudflare 必须用 context.data 向下传递用户ID
+    // Cloudflare 必须用 context.data 向下传递用户ID
     context.data.userId = payload.userId;
     return next();
   } catch (err) {

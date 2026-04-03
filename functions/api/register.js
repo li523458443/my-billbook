@@ -1,43 +1,60 @@
-import * as jose from 'jose';
+import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function onRequest(context) {
-    const { request, env } = context;
-    if (request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405 });
-    }
+  const { request, env } = context;
+  const corsHeaders = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
 
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
     const { username, password } = await request.json();
+
+    // 校验输入
     if (!username || !password) {
-        return new Response(JSON.stringify({ error: '用户名和密码不能为空' }), { status: 400 });
-    }
-    if (password.length < 6) {
-        return new Response(JSON.stringify({ error: '密码长度至少6位' }), { status: 400 });
+      return new Response(JSON.stringify({ error: "用户名和密码不能为空" }), {
+        status: 400, headers: corsHeaders
+      });
     }
 
     // 检查用户名是否已存在
-    const existing = await env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first();
-    if (existing) {
-        return new Response(JSON.stringify({ error: '用户名已存在' }), { status: 409 });
+    const existingUser = await env.DB.prepare(`
+      SELECT id FROM users WHERE username = ? LIMIT 1
+    `).bind(username).first();
+
+    if (existingUser) {
+      return new Response(JSON.stringify({ error: "用户名已存在" }), {
+        status: 400, headers: corsHeaders
+      });
     }
 
-    // 使用 PBKDF2 哈希密码（兼容 Workers 环境，无需额外依赖）
-    const encoder = new TextEncoder();
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const keyMaterial = await crypto.subtle.importKey(
-        'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
-    );
-    const derivedBits = await crypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-        keyMaterial, 256
-    );
-    const hashArray = Array.from(new Uint8Array(derivedBits));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-    const passwordHash = `${saltHex}:${hashHex}`;
+    // ✅ 生成bcrypt哈希，存到password_hash字段
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    await env.DB.prepare(
-        'INSERT INTO users (username, password_hash) VALUES (?, ?)'
-    ).bind(username, passwordHash).run();
+    // ✅ 生成唯一用户ID（用uuid）
+    const userId = uuidv4();
 
-    return new Response(JSON.stringify({ success: true }), { status: 201 });
+    // ✅ 完全适配你的表结构插入
+    await env.DB.prepare(`
+      INSERT INTO users (id, username, password_hash, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).bind(userId, username, passwordHash).run();
+
+    return new Response(JSON.stringify({ success: true, message: "注册成功" }), {
+      headers: corsHeaders
+    });
+
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500, headers: corsHeaders
+    });
+  }
 }
